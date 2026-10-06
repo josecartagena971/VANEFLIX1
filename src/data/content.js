@@ -34,9 +34,9 @@ export const musicPlaylist = [
     title: "Happy Together",
     artist: "The Turtles",
     src: "/music/cancion_happy_together.mp3",
-    startTime: 0, // Canción principal: completa sin cortes desde el inicio (0:00) al final
+    startTime: 4.6, // Inicia directo cantando ("Imagine me and you, I do..."), sin silencio ni espera instrumental
     movieStartTime: 38, // Coro para el montaje cinematográfico
-    subtitle: "Canción Principal • Completa sin cortes",
+    subtitle: "Canción Principal • Directo cantando",
     isMainSong: true
   },
   {

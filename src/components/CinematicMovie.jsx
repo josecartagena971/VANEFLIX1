@@ -118,7 +118,7 @@ export default function CinematicMovie({ onClose }) {
   // Inicializar al abrir la película: comienza con Happy Together desde 0:00 (suave y sin cortes)
   useEffect(() => {
     if (audioRefA.current) {
-      audioRefA.current.currentTime = 0;
+      audioRefA.current.currentTime = 4.6;
       audioRefA.current.volume = isMuted ? 0 : volume;
       if (isPlaying) {
         audioRefA.current.play().catch(() => {});
@@ -130,12 +130,12 @@ export default function CinematicMovie({ onClose }) {
   useEffect(() => {
     if (!currentScene) return;
 
-    // Acto 1: Intro, Capítulo 1 y Capítulo 2 -> "Happy Together" (The Turtles) desde 0:00
+    // Acto 1: Intro, Capítulo 1 y Capítulo 2 -> "Happy Together" (The Turtles) directo cantando (4.6s)
     // Acto 2: Capítulo 3 -> Transición suave con crossfade a "Photograph" (Ed Sheeran)
     // Acto 3: Capítulo 5 -> Transición suave con crossfade a "Just The Way You Are" (Bruno Mars)
     // Acto 4: Capítulo 7 y Outro -> Transición suave con crossfade a "I Get To Love You" (Nuestra Canción ❤️)
     if (currentScene.id === 'intro-1' || currentScene.id === 'chap-1') {
-      crossfadeToSong(musicPlaylist[0], 0);
+      crossfadeToSong(musicPlaylist[0], 4.6);
     } else if (currentScene.id === 'chap-3') {
       const songPhoto = musicPlaylist.find(s => s.id === 'song-2') || musicPlaylist[2];
       crossfadeToSong(songPhoto, 65);
