@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ProfileSelector from './components/ProfileSelector';
 import ContentModal from './components/ContentModal';
@@ -19,7 +19,7 @@ import Letters from './pages/Letters';
 import MyList from './pages/MyList';
 import TenReasons from './components/TenReasons';
 
-import { simulatedNotifications, contentRows } from './data/content';
+import { simulatedNotifications, contentRows, musicPlaylist } from './data/content';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { soundEffects } from './utils/audioEffects';
 
@@ -44,19 +44,48 @@ export default function App() {
   const [showSurprise, setShowSurprise] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(true);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
-  // Lista global de videos para flujo continuo automático por defecto
+  // Iniciar la música automáticamente al abrir la página o al primer clic/interacción
+  useEffect(() => {
+    setIsPlayingMusic(true);
+
+    const enableAudioOnInteraction = () => {
+      setIsPlayingMusic(true);
+      window.removeEventListener('click', enableAudioOnInteraction);
+      window.removeEventListener('touchstart', enableAudioOnInteraction);
+      window.removeEventListener('keydown', enableAudioOnInteraction);
+    };
+
+    window.addEventListener('click', enableAudioOnInteraction, { once: true });
+    window.addEventListener('touchstart', enableAudioOnInteraction, { once: true });
+    window.addEventListener('keydown', enableAudioOnInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', enableAudioOnInteraction);
+      window.removeEventListener('touchstart', enableAudioOnInteraction);
+      window.removeEventListener('keydown', enableAudioOnInteraction);
+    };
+  }, []);
+
+  // Pausar automáticamente la música de fondo de la página cuando se abra cualquier reproductor de video
+  useEffect(() => {
+    if (activeVideoItem || showCinematicMovie) {
+      setIsPlayingMusic(false);
+    }
+  }, [activeVideoItem, showCinematicMovie]);
+
+  // Lista global de videos con canciones asignadas de la carpeta (inician en el coro)
   const allVideoItems = [
-    { id: "vid-1", title: "Video 1: Momento Inolvidable", image: "/images/recuerdos_reales/recuerdo_1.jpg", video: "/videos/video_1.mp4" },
-    { id: "vid-2", title: "Video 2: Risas Juntos", image: "/images/recuerdos_reales/recuerdo_2.jpg", video: "/videos/video_2.mp4" },
-    { id: "vid-3", title: "Video 3: Tarde Mágica", image: "/images/recuerdos_reales/recuerdo_3.jpg", video: "/videos/video_3.mp4" },
-    { id: "vid-4", title: "Video 4: Dulce Compañía", image: "/images/recuerdos_reales/recuerdo_4.jpg", video: "/videos/video_4.mp4" },
-    { id: "vid-5", title: "Video 5: Nuestra Historia en Movimiento", image: "/images/recuerdos_reales/recuerdo_5.jpg", video: "/videos/video_5.mp4" },
-    { id: "vid-6", title: "Video 6: Miradas y Gestos", image: "/images/recuerdos_reales/recuerdo_6.jpg", video: "/videos/video_6.mp4" },
-    { id: "vid-7", title: "Video 7: Para Toda la Vida", image: "/images/recuerdos_reales/recuerdo_7.jpg", video: "/videos/video_7.mp4" },
-    { id: "vid-8", title: "Video 8: Nuestro Momento Más Lindo", image: "/images/recuerdos_reales/recuerdo_34.jpg", video: "/videos/video_8.mp4" }
+    { id: "vid-1", title: "Video 1: Momento Inolvidable", image: "/images/recuerdos_reales/recuerdo_1.jpg", video: "/videos/video_1.mp4", musicIndex: 0 },
+    { id: "vid-2", title: "Video 2: Risas Juntos", image: "/images/recuerdos_reales/recuerdo_2.jpg", video: "/videos/video_2.mp4", musicIndex: 1 },
+    { id: "vid-3", title: "Video 3: Tarde Mágica", image: "/images/recuerdos_reales/recuerdo_3.jpg", video: "/videos/video_3.mp4", musicIndex: 2 },
+    { id: "vid-4", title: "Video 4: Dulce Compañía", image: "/images/recuerdos_reales/recuerdo_4.jpg", video: "/videos/video_4.mp4", musicIndex: 3 },
+    { id: "vid-5", title: "Video 5: Nuestra Historia en Movimiento", image: "/images/recuerdos_reales/recuerdo_5.jpg", video: "/videos/video_5.mp4", musicIndex: 4 },
+    { id: "vid-6", title: "Video 6: Miradas y Gestos", image: "/images/recuerdos_reales/recuerdo_6.jpg", video: "/videos/video_6.mp4", musicIndex: 0 },
+    { id: "vid-7", title: "Video 7: Para Toda la Vida", image: "/images/recuerdos_reales/recuerdo_7.jpg", video: "/videos/video_7.mp4", musicIndex: 1 },
+    { id: "vid-8", title: "Video 8: Nuestro Momento Más Lindo", image: "/images/recuerdos_reales/recuerdo_34.jpg", video: "/videos/video_8.mp4", musicIndex: 3 }
   ];
 
   // Verificar si un elemento está en Mi Lista
@@ -74,6 +103,7 @@ export default function App() {
   // Reproducir video con soporte de lista de reproducción continua y mapeo dinámico
   const handlePlayVideo = (item, playlist = null) => {
     setActiveModalItem(null);
+    setIsPlayingMusic(false);
     const targetPlaylist = playlist || allVideoItems;
 
     let foundIdx = -1;
@@ -106,7 +136,7 @@ export default function App() {
       ...item,
       video: baseVideo.video,
       videoIndex: foundIdx,
-      musicIndex: item?.musicIndex !== undefined ? item.musicIndex : (foundIdx % 4),
+      musicIndex: item?.musicIndex !== undefined ? item.musicIndex : (foundIdx % musicPlaylist.length),
       introType: item?.introType || (foundIdx % 4 === 0 ? 'birthday' : foundIdx % 4 === 1 ? 'romantic' : foundIdx % 4 === 2 ? 'cinematic' : 'memories')
     };
 
@@ -159,6 +189,7 @@ export default function App() {
       <ProfileSelector
         onSelectProfile={(p) => {
           setCurrentProfile(p);
+          setCurrentSongIndex(0); // Happy Together (primer tema con inicio en el coro a los 38s)
           setIsPlayingMusic(true);
         }}
       />
@@ -227,7 +258,13 @@ export default function App() {
               />
             )}
 
-            {currentTab === 'photos' && <Photos />}
+            {currentTab === 'photos' && (
+              <Photos
+                onPlayMovie={() => setShowCinematicMovie(true)}
+                isPlayingMusic={isPlayingMusic}
+                onToggleMusic={() => setIsPlayingMusic(!isPlayingMusic)}
+              />
+            )}
 
             {currentTab === 'videos' && (
               <Videos
@@ -289,6 +326,7 @@ export default function App() {
           onClose={() => {
             setActiveVideoItem(null);
             setActiveVideoPlaylist([]);
+            setIsPlayingMusic(true);
           }}
         />
       )}
@@ -296,7 +334,10 @@ export default function App() {
       {/* NUEVO: Película Completa Continua (Montaje Editado de Fotos + Videos) */}
       {showCinematicMovie && (
         <CinematicMovie
-          onClose={() => setShowCinematicMovie(false)}
+          onClose={() => {
+            setShowCinematicMovie(false);
+            setIsPlayingMusic(true);
+          }}
         />
       )}
 
@@ -305,17 +346,16 @@ export default function App() {
         <Surprise
           onClose={() => setShowSurprise(false)}
           onPlayMusic={() => {
-            setCurrentSongIndex(0);
+            const ourSongIdx = musicPlaylist.findIndex(s => s.isOurSong || s.title.toLowerCase().includes('get to love you'));
+            setCurrentSongIndex(ourSongIdx !== -1 ? ourSongIdx : 1);
             setIsPlayingMusic(true);
           }}
         />
       )}
 
-      {/* Reproductor de Música Flotante */}
+      {/* Reproductor de Música Flotante (Canción Principal: Happy Together sin cortes) */}
       <MusicPlayer
         isPlaying={isPlayingMusic}
-        currentSongIndex={currentSongIndex}
-        onChangeSong={(idx) => setCurrentSongIndex(idx)}
         onTogglePlay={() => setIsPlayingMusic(!isPlayingMusic)}
       />
 

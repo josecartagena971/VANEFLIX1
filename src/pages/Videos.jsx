@@ -14,6 +14,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_1.jpg",
       video: "/videos/video_1.mp4",
+      musicIndex: 0,
       description: "Uno de nuestros recuerdos más hermosos en movimiento.",
       tags: ["Video Real", "Amor", "Recuerdos"]
     },
@@ -26,6 +27,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_2.jpg",
       video: "/videos/video_2.mp4",
+      musicIndex: 1,
       description: "Tu sonrisa y la alegría que siempre compartimos.",
       tags: ["Video Real", "Risas", "Complicidad"]
     },
@@ -38,6 +40,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "99%",
       image: "/images/recuerdos_reales/recuerdo_3.jpg",
       video: "/videos/video_3.mp4",
+      musicIndex: 2,
       description: "Un instante grabado que vale más que mil palabras.",
       tags: ["Video Real", "Magia", "Aventuras"]
     },
@@ -50,6 +53,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_4.jpg",
       video: "/videos/video_4.mp4",
+      musicIndex: 3,
       description: "Estar a tu lado y registrar nuestra complicidad.",
       tags: ["Video Real", "Ternura", "Juntos"]
     },
@@ -62,6 +66,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_5.jpg",
       video: "/videos/video_5.mp4",
+      musicIndex: 4,
       description: "Recorriendo caminos y construyendo memorias.",
       tags: ["Video Real", "Nuestra Historia"]
     },
@@ -74,6 +79,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_6.jpg",
       video: "/videos/video_6.mp4",
+      musicIndex: 0,
       description: "Ese brillo único en tus ojos que me vuelve loco.",
       tags: ["Video Real", "Miradas", "Amor"]
     },
@@ -86,6 +92,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_7.jpg",
       video: "/videos/video_7.mp4",
+      musicIndex: 1,
       description: "Un resumen de lo afortunado que soy de tenerte.",
       tags: ["Video Real", "Eternidad", "Cumpleaños"]
     },
@@ -98,6 +105,7 @@ export default function Videos({ onPlayVideo, onOpenModal, isInMyList, onToggleM
       match: "100%",
       image: "/images/recuerdos_reales/recuerdo_34.jpg",
       video: "/videos/video_8.mp4",
+      musicIndex: 3,
       description: "¡Qué guapa estás, mi amorcito! Nuestro momento más fresco y especial juntos.",
       tags: ["Video Nuevo", "Amorcito", "Recuerdos"]
     }

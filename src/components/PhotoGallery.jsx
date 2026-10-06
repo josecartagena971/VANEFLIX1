@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, X, Heart, ZoomIn, Calendar } from 'lucide-react';
-import { galleryPhotos } from '../data/content';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, X, Heart, ZoomIn, Calendar, Film, Music, Play, Pause, SkipForward } from 'lucide-react';
+import { galleryPhotos, musicPlaylist } from '../data/content';
 import { soundEffects } from '../utils/audioEffects';
 
-export default function PhotoGallery() {
+export default function PhotoGallery({ onPlayMovie, isPlayingMusic = true, onToggleMusic }) {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [activePhotoIndex, setActivePhotoIndex] = useState(null);
   const [transitionKey, setTransitionKey] = useState(0);
+  const [isSlideshow, setIsSlideshow] = useState(false);
+
+  const slideCountRef = useRef(0);
+  const currentMusic = musicPlaylist[currentSongIndex] || musicPlaylist[0];
 
   const categories = ['Todos', 'Primeras Citas', 'Viajes', 'Risas', 'Especiales'];
 
@@ -18,9 +22,11 @@ export default function PhotoGallery() {
     soundEffects.playPop();
     setTransitionKey(prev => prev + 1);
     setActivePhotoIndex(index);
+    setIsSlideshow(false);
   };
 
   const handleClose = () => {
+    setIsSlideshow(false);
     setActivePhotoIndex(null);
   };
 
@@ -38,17 +44,41 @@ export default function PhotoGallery() {
     setActivePhotoIndex((prev) => (prev < filteredPhotos.length - 1 ? prev + 1 : 0));
   };
 
+  // Modo presentación musical automática de fotos
+  useEffect(() => {
+    if (!isSlideshow || activePhotoIndex === null) return;
+
+    const timer = setInterval(() => {
+      setTransitionKey((prev) => prev + 1);
+      setActivePhotoIndex((prev) => (prev < filteredPhotos.length - 1 ? prev + 1 : 0));
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [isSlideshow, activePhotoIndex, filteredPhotos.length]);
+
+  const handleStartSlideshow = () => {
+    soundEffects.playTudum();
+    slideCountRef.current = 0;
+    setActivePhotoIndex(0);
+    setIsSlideshow(true);
+    if (!isPlayingMusic && onToggleMusic) onToggleMusic();
+  };
+
   // Navegación con teclado en el visor de fotos
-  React.useEffect(() => {
+  useEffect(() => {
     if (activePhotoIndex === null) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') handleClose();
       if (e.key === 'ArrowRight') handleNext();
       if (e.key === 'ArrowLeft') handlePrev();
+      if (e.key === ' ') {
+        e.preventDefault();
+        setIsSlideshow(prev => !prev);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activePhotoIndex, filteredPhotos.length]);
+  }, [activePhotoIndex, filteredPhotos.length, currentSongIndex]);
 
   const activePhoto = activePhotoIndex !== null ? filteredPhotos[activePhotoIndex] : null;
 
@@ -56,9 +86,55 @@ export default function PhotoGallery() {
     <div className="photos-page-container">
       <div className="page-header-banner">
         <h1 className="page-header-title">📸 Nuestros Recuerdos</h1>
-        <p style={{ color: '#a3a3a3', fontSize: '1.1rem' }}>
+        <p style={{ color: '#a3a3a3', fontSize: '1.1rem', marginBottom: '1.2rem' }}>
           Una galería de instantes inolvidables. Cada foto guarda un pedacito de nuestra historia, mi niña bonita.
         </p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
+          {onPlayMovie && (
+            <button
+              className="btn-play-hero"
+              onClick={onPlayMovie}
+              style={{
+                background: '#E50914',
+                color: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 22px',
+                borderRadius: '8px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 8px 25px rgba(229, 9, 20, 0.4)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Film size={18} fill="#fff" />
+              <span>Ver Película Completa (Fotos + Videos con Música)</span>
+            </button>
+          )}
+
+          <button
+            className="btn-play-hero"
+            onClick={handleStartSlideshow}
+            style={{
+              background: 'linear-gradient(135deg, #ff2e63 0%, #e11d48 100%)',
+              color: '#fff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 22px',
+              borderRadius: '8px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 8px 25px rgba(255, 46, 99, 0.4)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Play size={18} fill="#fff" />
+            <span>Presentación de Fotos con Música (Combina Canciones)</span>
+          </button>
+        </div>
       </div>
 
       {/* Barra de Filtros */}
@@ -115,11 +191,88 @@ export default function PhotoGallery() {
       {activePhoto && (
         <div className="lightbox-modal" onClick={handleClose}>
           <div className="lightbox-content-box" onClick={(e) => e.stopPropagation()}>
-            {/* Botón Cerrar y Contador */}
-            <div style={{ position: 'absolute', top: '-42px', left: 0, right: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#fda4af', fontSize: '0.88rem', fontWeight: 600, background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '14px' }}>
-                Foto {activePhotoIndex + 1} de {filteredPhotos.length}
-              </span>
+            {/* Botón Cerrar, Contador y Control de Música */}
+            <div style={{ position: 'absolute', top: '-52px', left: 0, right: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#fda4af', fontSize: '0.88rem', fontWeight: 600, background: 'rgba(0,0,0,0.6)', padding: '5px 12px', borderRadius: '14px' }}>
+                  Foto {activePhotoIndex + 1} de {filteredPhotos.length}
+                </span>
+                {isSlideshow && (
+                  <span style={{ color: '#46d369', fontSize: '0.78rem', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: '14px' }}>
+                    ▶ Modo Automático
+                  </span>
+                )}
+              </div>
+
+              {/* Indicador de Música en el Visor de Fotos */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    background: 'rgba(255, 46, 99, 0.25)',
+                    border: '1px solid rgba(255, 46, 99, 0.6)',
+                    borderRadius: '20px',
+                    padding: '5px 14px',
+                    color: '#fda4af',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  title="Canción Principal: Happy Together (Sin cortes)"
+                >
+                  <Music size={13} />
+                  <span>Happy Together • The Turtles (Sin cortes 🎵)</span>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onToggleMusic) onToggleMusic();
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '30px',
+                    height: '30px',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                  title={isPlayingMusic ? "Pausar música" : "Reanudar música"}
+                >
+                  {isPlayingMusic ? <Pause size={14} /> : <Play size={14} fill="#fff" />}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    soundEffects.playPop();
+                    setIsSlideshow(!isSlideshow);
+                  }}
+                  style={{
+                    background: isSlideshow ? '#ff2e63' : 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    cursor: 'pointer'
+                  }}
+                  title={isSlideshow ? "Pausar diapositivas" : "Activar diapositivas automáticas"}
+                >
+                  {isSlideshow ? <Pause size={12} /> : <Play size={12} fill="#fff" />}
+                  <span>{isSlideshow ? 'Pausar Auto' : 'Auto ▶'}</span>
+                </button>
+              </div>
+
               <button
                 className="modal-close-btn"
                 onClick={handleClose}

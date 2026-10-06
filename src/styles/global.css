@@ -2456,4 +2456,16 @@ img, video {
   }
 }
 
+@keyframes slideDownFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+
 

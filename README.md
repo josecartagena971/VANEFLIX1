@@ -135,5 +135,4 @@ Tus 5 canciones MP3 ya están integradas en `public/music/`:
 - 🎵 **Just The Way You Are** — Bruno Mars (`cancion_just_the_way_you_are.mp3`)
 - 🎵 **Happy Together** — The Turtles (`cancion_happy_together.mp3`)
 
-El reproductor de música en la esquina inferior derecha permite avanzar/retroceder de canción y abrir el menú desplegable para elegir cualquiera de ellas. Al pulsar "Reproducir nuestra canción" en la sorpresa, se reproduce automáticamente *I Get To Love You*.
-Todos los videos se reproducen silenciados para que la música de fondo sea la protagonista de la experiencia.
+Al reproducir cualquier video o escena con video, la música de fondo se pausa automáticamente para que se disfrute el audio original del video sin interferencias, con controles de volumen independientes.

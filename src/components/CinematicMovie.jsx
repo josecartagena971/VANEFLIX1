@@ -15,34 +15,175 @@ export default function CinematicMovie({ onClose }) {
   const [videoElapsed, setVideoElapsed] = useState(0);
   const [isTrimMode, setIsTrimMode] = useState(true);
 
-  // Música de fondo durante toda la película
-  const [musicIdx, setMusicIdx] = useState(0);
-  const currentMusic = musicPlaylist[musicIdx] || musicPlaylist[0];
+  // Música de fondo continua con Crossfade suave (sin cambios bruscos)
+  const [activeSlot, setActiveSlot] = useState('A');
+  const [slotASong, setSlotASong] = useState(musicPlaylist[0]); // Happy Together desde el inicio
+  const [slotBSong, setSlotBSong] = useState(musicPlaylist[1]);
+  const [currentMusicSong, setCurrentMusicSong] = useState(musicPlaylist[0]);
+  const [songToast, setSongToast] = useState(null);
 
   const videoRef = useRef(null);
-  const musicAudioRef = useRef(null);
+  const audioRefA = useRef(null);
+  const audioRefB = useRef(null);
+  const crossfadeIntervalRef = useRef(null);
+  const isCrossfadingRef = useRef(false);
+  const toastTimeoutRef = useRef(null);
   const containerRef = useRef(null);
   const timerRef = useRef(null);
 
   const currentScene = movieScenes[currentSceneIdx] || movieScenes[0];
   const isVideo = currentScene.type === 'video';
 
-  // Manejo de música de fondo de la película
-  useEffect(() => {
-    if (musicAudioRef.current) {
-      musicAudioRef.current.volume = isMuted ? 0 : volume;
+  const triggerMusicToast = (song) => {
+    setSongToast(song);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setSongToast(null);
+    }, 4200);
+  };
+
+  // Función de transición suave (Crossfade de 2.2 segundos sin cortes bruscos)
+  const crossfadeToSong = (targetSong, startOffset = null) => {
+    if (!targetSong) return;
+    if (currentMusicSong.id === targetSong.id && !isCrossfadingRef.current) return;
+
+    if (crossfadeIntervalRef.current) {
+      clearInterval(crossfadeIntervalRef.current);
+    }
+    isCrossfadingRef.current = true;
+
+    const fromSlot = activeSlot;
+    const toSlot = fromSlot === 'A' ? 'B' : 'A';
+    const outgoing = fromSlot === 'A' ? audioRefA.current : audioRefB.current;
+    const incoming = toSlot === 'A' ? audioRefA.current : audioRefB.current;
+
+    if (toSlot === 'A') {
+      setSlotASong(targetSong);
+    } else {
+      setSlotBSong(targetSong);
+    }
+
+    setCurrentMusicSong(targetSong);
+    triggerMusicToast(targetSong);
+
+    const maxVol = isMuted ? 0 : volume;
+
+    if (incoming) {
+      incoming.src = targetSong.src;
+      const targetTime = startOffset !== null
+        ? startOffset
+        : (targetSong.movieStartTime !== undefined ? targetSong.movieStartTime : (targetSong.startTime || 0));
+      incoming.currentTime = targetTime;
+      incoming.volume = 0;
       if (isPlaying) {
-        musicAudioRef.current.play().catch(() => {});
-      } else {
-        musicAudioRef.current.pause();
+        incoming.play().catch(() => {});
       }
     }
-  }, [isPlaying, musicIdx, volume, isMuted]);
+
+    // Duración de la transición: 2200ms
+    const durationMs = 2200;
+    const stepMs = 50;
+    const totalSteps = durationMs / stepMs;
+    let step = 0;
+    const initialOutVol = outgoing ? outgoing.volume : maxVol;
+
+    crossfadeIntervalRef.current = setInterval(() => {
+      step++;
+      const progress = Math.min(1, step / totalSteps);
+
+      if (outgoing) {
+        outgoing.volume = Math.max(0, initialOutVol * (1 - progress));
+      }
+      if (incoming && !isMuted) {
+        incoming.volume = Math.min(maxVol, maxVol * progress);
+      }
+
+      if (progress >= 1) {
+        clearInterval(crossfadeIntervalRef.current);
+        crossfadeIntervalRef.current = null;
+        isCrossfadingRef.current = false;
+
+        if (outgoing) {
+          outgoing.pause();
+          outgoing.volume = 0;
+        }
+        if (incoming && !isMuted) {
+          incoming.volume = maxVol;
+        }
+        setActiveSlot(toSlot);
+      }
+    }, stepMs);
+  };
+
+  // Inicializar al abrir la película: comienza con Happy Together desde 0:00 (suave y sin cortes)
+  useEffect(() => {
+    if (audioRefA.current) {
+      audioRefA.current.currentTime = 0;
+      audioRefA.current.volume = isMuted ? 0 : volume;
+      if (isPlaying) {
+        audioRefA.current.play().catch(() => {});
+      }
+    }
+  }, []);
+
+  // Transición suave y espaciada entre los actos de la película (sin cambios rápidos ni bruscos)
+  useEffect(() => {
+    if (!currentScene) return;
+
+    // Acto 1: Intro, Capítulo 1 y Capítulo 2 -> "Happy Together" (The Turtles) desde 0:00
+    // Acto 2: Capítulo 3 -> Transición suave con crossfade a "Photograph" (Ed Sheeran)
+    // Acto 3: Capítulo 5 -> Transición suave con crossfade a "Just The Way You Are" (Bruno Mars)
+    // Acto 4: Capítulo 7 y Outro -> Transición suave con crossfade a "I Get To Love You" (Nuestra Canción ❤️)
+    if (currentScene.id === 'intro-1' || currentScene.id === 'chap-1') {
+      crossfadeToSong(musicPlaylist[0], 0);
+    } else if (currentScene.id === 'chap-3') {
+      const songPhoto = musicPlaylist.find(s => s.id === 'song-2') || musicPlaylist[2];
+      crossfadeToSong(songPhoto, 65);
+    } else if (currentScene.id === 'chap-5') {
+      const songBruno = musicPlaylist.find(s => s.id === 'song-3') || musicPlaylist[3];
+      crossfadeToSong(songBruno, 48);
+    } else if (currentScene.id === 'chap-7') {
+      const ourSong = musicPlaylist.find(s => s.isOurSong) || musicPlaylist[1];
+      crossfadeToSong(ourSong, 45);
+    }
+  }, [currentSceneIdx]);
+
+  // Manejo de sincronización de Play / Pausa y Volumen para ambos slots de audio
+  useEffect(() => {
+    const curA = audioRefA.current;
+    const curB = audioRefB.current;
+    const maxVol = isMuted ? 0 : volume;
+
+    if (!isCrossfadingRef.current) {
+      if (curA) curA.volume = activeSlot === 'A' ? maxVol : 0;
+      if (curB) curB.volume = activeSlot === 'B' ? maxVol : 0;
+    }
+
+    if (isPlaying) {
+      if (activeSlot === 'A' && curA) curA.play().catch(() => {});
+      if (activeSlot === 'B' && curB) curB.play().catch(() => {});
+    } else {
+      if (curA) curA.pause();
+      if (curB) curB.pause();
+    }
+  }, [isPlaying, volume, isMuted, activeSlot]);
+
+  // Limpiar transiciones al cerrar
+  useEffect(() => {
+    return () => {
+      if (crossfadeIntervalRef.current) clearInterval(crossfadeIntervalRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      if (audioRefA.current) audioRefA.current.pause();
+      if (audioRefB.current) audioRefB.current.pause();
+    };
+  }, []);
 
   const handleNextMusic = (e) => {
     e?.stopPropagation();
     soundEffects.playPop();
-    setMusicIdx((prev) => (prev + 1) % musicPlaylist.length);
+    const currentIdx = musicPlaylist.findIndex(s => s.id === currentMusicSong.id);
+    const nextIdx = (currentIdx + 1) % musicPlaylist.length;
+    crossfadeToSong(musicPlaylist[nextIdx]);
   };
 
   // Auto-hide controles tras inactividad
@@ -187,12 +328,50 @@ export default function CinematicMovie({ onClose }) {
       {/* DESTELLO DE LUZ ENTRE CAMBIO DE FOTOS / ESCENAS */}
       {sceneFlash && <div className="scene-flash-overlay" />}
 
-      {/* AUDIO DE FONDO CONTINUO DE LA PELÍCULA (LA MÚSICA NO PARA) */}
+      {/* SISTEMA DE AUDIO DUAL CON CROSSFADE SUAVE ENTRE CANCIONES */}
       <audio
-        ref={musicAudioRef}
-        src={currentMusic.src}
-        onEnded={() => setMusicIdx((prev) => (prev + 1) % musicPlaylist.length)}
+        ref={audioRefA}
+        src={slotASong.src}
+        onEnded={handleNextMusic}
       />
+      <audio
+        ref={audioRefB}
+        src={slotBSong.src}
+        onEnded={handleNextMusic}
+      />
+
+      {/* NOTIFICACIÓN FLOTANTE CUANDO CAMBIA DE CANCIÓN */}
+      {songToast && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '82px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 90,
+            background: 'rgba(15, 15, 15, 0.92)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 46, 99, 0.65)',
+            borderRadius: '30px',
+            padding: '8px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            color: '#fff',
+            boxShadow: '0 10px 35px rgba(0,0,0,0.7)',
+            animation: 'slideDownFade 0.35s ease',
+            pointerEvents: 'none'
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>🎵</span>
+          <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+            {songToast.title} <span style={{ color: '#fda4af', fontWeight: 400 }}>• {songToast.artist}</span>
+          </span>
+          <span style={{ fontSize: '0.78rem', background: '#ff2e63', color: '#fff', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>
+            Transición suave ❤️
+          </span>
+        </div>
+      )}
 
       {/* 1. ESCENAS DE TIPO INTRO / CAPÍTULO / OUTRO */}
       {(currentScene.type === 'intro' || currentScene.type === 'chapter' || currentScene.type === 'outro') && (
@@ -358,10 +537,10 @@ export default function CinematicMovie({ onClose }) {
               fontWeight: 600,
               cursor: 'pointer'
             }}
-            title="Cambiar a la siguiente canción"
+            title="Cambiar de canción con transición suave (crossfade)"
           >
             <Music size={14} />
-            <span>{currentMusic.title} • {currentMusic.artist} (Clic para cambiar)</span>
+            <span>{currentMusicSong.title} • {currentMusicSong.artist} • Siguiente ⏭</span>
           </button>
 
           <button

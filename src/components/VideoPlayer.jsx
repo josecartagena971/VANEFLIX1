@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, RotateCw, SkipForward, SkipBack, Music, Sparkles } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, RotateCw, SkipForward, SkipBack, Music } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { musicPlaylist } from '../data/content';
 import { soundEffects } from '../utils/audioEffects';
@@ -33,12 +33,11 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
     categoryBadge: (currentIdx === safeInitialIdx && item?.categoryBadge) ? item.categoryBadge : null
   };
 
-  // Música romántica de fondo (inicia con la pista asignada para variedad)
-  const initialMusicIdx = item?.musicIndex !== undefined
-    ? (item.musicIndex % musicPlaylist.length)
-    : (safeInitialIdx % musicPlaylist.length);
-  const [musicIdx, setMusicIdx] = useState(initialMusicIdx);
-  const currentMusic = musicPlaylist[musicIdx] || musicPlaylist[0];
+  // Canción de la carpeta asignada a este video (inicia en el coro)
+  const videoMusicIdx = currentItem?.musicIndex !== undefined
+    ? (currentItem.musicIndex % musicPlaylist.length)
+    : (currentIdx % musicPlaylist.length);
+  const currentMusic = musicPlaylist[videoMusicIdx] || musicPlaylist[0];
 
   // Estado del overlay de inicio dinámico
   const [showIntro, setShowIntro] = useState(true);
@@ -56,12 +55,28 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
   const [showControls, setShowControls] = useState(true);
   const [nextCountdown, setNextCountdown] = useState(null);
 
-
   const hasNext = playlist.length > 0 && currentIdx < playlist.length - 1;
   const hasPrev = playlist.length > 0 && currentIdx > 0;
   const nextItem = hasNext ? playlist[currentIdx + 1] : null;
 
-  // Sincronizar música de fondo con el reproductor
+  // Sincronizar música de la carpeta iniciando directo en el coro / mejor parte
+  useEffect(() => {
+    if (musicAudioRef.current) {
+      musicAudioRef.current.volume = isMuted ? 0 : volume;
+      if (currentMusic.startTime) {
+        musicAudioRef.current.currentTime = currentMusic.startTime;
+      } else {
+        musicAudioRef.current.currentTime = 0;
+      }
+      if (isPlaying) {
+        musicAudioRef.current.play().catch(() => {});
+      } else {
+        musicAudioRef.current.pause();
+      }
+    }
+  }, [currentIdx, videoMusicIdx]);
+
+  // Sincronizar reproducción, pausa y volumen entre video y música
   useEffect(() => {
     if (musicAudioRef.current) {
       musicAudioRef.current.volume = isMuted ? 0 : volume;
@@ -71,7 +86,24 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
         musicAudioRef.current.pause();
       }
     }
-  }, [isPlaying, musicIdx, volume, isMuted]);
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isPlaying, volume, isMuted]);
+
+  // Sincronizar velocidad de reproducción
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackSpeed;
+    }
+    if (musicAudioRef.current) {
+      musicAudioRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
 
   // Efecto dinámico de entrada según el tipo de tarjeta
   useEffect(() => {
@@ -116,6 +148,32 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
     };
   }, [isPlaying, nextCountdown]);
 
+  const playNext = () => {
+    soundEffects.playPop();
+    setNextCountdown(null);
+    if (hasNext) {
+      setCurrentIdx((prev) => prev + 1);
+      setCurrentTime(0);
+      setIsPlaying(true);
+    }
+  };
+
+  const playPrev = () => {
+    soundEffects.playPop();
+    setNextCountdown(null);
+    if (hasPrev) {
+      setCurrentIdx((prev) => prev - 1);
+      setCurrentTime(0);
+      setIsPlaying(true);
+    }
+  };
+
+  const togglePlay = () => {
+    soundEffects.playPop();
+    if (nextCountdown !== null) setNextCountdown(null);
+    setIsPlaying((prev) => !prev);
+  };
+
   // Teclas rápidas
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -151,43 +209,6 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
       playNext();
     }
   }, [nextCountdown]);
-
-  const playNext = () => {
-    soundEffects.playPop();
-    setNextCountdown(null);
-    if (hasNext) {
-      setCurrentIdx((prev) => prev + 1);
-      setMusicIdx((prev) => (prev + 1) % musicPlaylist.length);
-      setCurrentTime(0);
-      setIsPlaying(true);
-    }
-  };
-
-  const playPrev = () => {
-    soundEffects.playPop();
-    setNextCountdown(null);
-    if (hasPrev) {
-      setCurrentIdx((prev) => prev - 1);
-      setMusicIdx((prev) => (prev - 1 + musicPlaylist.length) % musicPlaylist.length);
-      setCurrentTime(0);
-      setIsPlaying(true);
-    }
-  };
-
-  const togglePlay = () => {
-    soundEffects.playPop();
-    if (nextCountdown !== null) setNextCountdown(null);
-
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    }
-  };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -231,15 +252,33 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
 
   return (
     <div className="video-player-modal" ref={containerRef}>
-      {/* MÚSICA DE FONDO ROMÁNTICA REEMPLAZANDO EL AUDIO ORIGINAL DEL VIDEO */}
+      {/* Música romántica de la carpeta con inicio en el coro, sustituyendo el audio ruidoso del video */}
       <audio
         ref={musicAudioRef}
         src={currentMusic.src}
-        onEnded={() => setMusicIdx((prev) => (prev + 1) % musicPlaylist.length)}
+        onLoadedMetadata={() => {
+          if (currentMusic?.startTime !== undefined && musicAudioRef.current) {
+            try {
+              musicAudioRef.current.currentTime = currentMusic.startTime;
+            } catch (e) {}
+          }
+        }}
+        onCanPlay={() => {
+          if (currentMusic?.startTime !== undefined && musicAudioRef.current) {
+            if (musicAudioRef.current.currentTime < currentMusic.startTime - 1) {
+              try {
+                musicAudioRef.current.currentTime = currentMusic.startTime;
+              } catch (e) {}
+            }
+          }
+        }}
+        onEnded={() => {
+          if (hasNext) playNext();
+        }}
       />
 
       <div className="video-container-inner" onClick={togglePlay}>
-        {/* El video va SILENCIADO (muted=true) tal como pidió el usuario */}
+        {/* El video va silenciado para eliminar ruidos de fondo y disfrutar la música */}
         <video
           key={currentItem?.video || currentItem?.id}
           ref={videoRef}
@@ -250,8 +289,10 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
           onLoadedMetadata={() => {
             if (videoRef.current) {
               setDuration(videoRef.current.duration);
-              videoRef.current.play().catch(() => {});
-              setIsPlaying(true);
+              videoRef.current.playbackRate = playbackSpeed;
+              if (isPlaying) {
+                videoRef.current.play().catch(() => {});
+              }
             }
           }}
           onEnded={handleEnded}
@@ -281,10 +322,12 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
               {currentItem.introType === 'cinematic' && 'Una historia de amor verdadero que seguimos escribiendo juntos'}
               {currentItem.introType === 'memories' && 'Cada segundo a tu lado está guardado en lo más profundo de mi corazón'}
             </p>
+
             <div className="intro-music-tag">
               <Music size={16} />
-              <span>Banda Sonora: <strong>{currentMusic.title}</strong> — {currentMusic.artist}</span>
+              <span>Banda Sonora: <strong>{currentMusic.title}</strong> — {currentMusic.artist} (Coro ❤️)</span>
             </div>
+
             <button
               className="intro-skip-btn"
               onClick={(e) => {
@@ -372,9 +415,7 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
             )}
           </div>
 
-          {/* Insignia de Canción sonando */}
-          <button
-            onClick={() => setMusicIdx((prev) => (prev + 1) % musicPlaylist.length)}
+          <div
             style={{
               marginLeft: 'auto',
               display: 'flex',
@@ -382,18 +423,16 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
               gap: '6px',
               background: 'rgba(255, 46, 99, 0.25)',
               border: '1px solid rgba(255, 46, 99, 0.5)',
-              padding: '6px 12px',
+              padding: '6px 14px',
               borderRadius: '20px',
               color: '#fda4af',
               fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer'
+              fontWeight: 600
             }}
-            title="Clic para cambiar de canción"
           >
             <Music size={14} />
-            <span>{currentMusic.title} • {currentMusic.artist}</span>
-          </button>
+            <span>Música: <strong>{currentMusic.title}</strong> — {currentMusic.artist}</span>
+          </div>
         </div>
 
         {/* Controles de reproducción inferiores */}
@@ -474,13 +513,11 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
             </div>
 
             <div className="video-ctrl-group">
-
               <select
                 value={playbackSpeed}
                 onChange={(e) => {
                   const s = parseFloat(e.target.value);
                   setPlaybackSpeed(s);
-                  if (videoRef.current) videoRef.current.playbackRate = s;
                 }}
                 style={{
                   background: 'rgba(255,255,255,0.15)',

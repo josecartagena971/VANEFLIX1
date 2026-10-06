@@ -23,43 +23,51 @@ export const siteConfig = {
   birthdayDate: "2026-10-06T00:00:00",
   currentAge: 24,
 
-  backgroundMusic: "/music/cancion_i_get_to_love_you.mp3",
-  musicTitle: "I Get To Love You",
-  musicArtist: "Ruelle • Nuestra Canción ❤️",
+  backgroundMusic: "/music/cancion_happy_together.mp3",
+  musicTitle: "Happy Together",
+  musicArtist: "The Turtles ❤️",
 };
 
 export const musicPlaylist = [
   {
     id: "song-0",
+    title: "Happy Together",
+    artist: "The Turtles",
+    src: "/music/cancion_happy_together.mp3",
+    startTime: 0, // Canción principal: completa sin cortes desde el inicio (0:00) al final
+    movieStartTime: 38, // Coro para el montaje cinematográfico
+    subtitle: "Canción Principal • Completa sin cortes",
+    isMainSong: true
+  },
+  {
+    id: "song-1",
     title: "I Get To Love You",
     subtitle: "Nuestra Canción ❤️",
     artist: "Ruelle",
     src: "/music/cancion_i_get_to_love_you.mp3",
+    startTime: 45, // Coro romántico ("I get to love you, it's the best thing...")
     isOurSong: true
   },
   {
-    id: "song-1",
+    id: "song-2",
     title: "Photograph",
     artist: "Ed Sheeran",
-    src: "/music/cancion_photograph.mp3"
-  },
-  {
-    id: "song-2",
-    title: "I Wanna Be Yours",
-    artist: "Arctic Monkeys",
-    src: "/music/cancion_i_wanna_be_yours.mp3"
+    src: "/music/cancion_photograph.mp3",
+    startTime: 65 // Coro emotivo ("So you can keep me inside the pocket...")
   },
   {
     id: "song-3",
     title: "Just The Way You Are",
     artist: "Bruno Mars",
-    src: "/music/cancion_just_the_way_you_are.mp3"
+    src: "/music/cancion_just_the_way_you_are.mp3",
+    startTime: 48 // Coro apasionado ("When I see your face, there's not a thing that I would change...")
   },
   {
     id: "song-4",
-    title: "Happy Together",
-    artist: "The Turtles",
-    src: "/music/cancion_happy_together.mp3"
+    title: "I Wanna Be Yours",
+    artist: "Arctic Monkeys",
+    src: "/music/cancion_i_wanna_be_yours.mp3",
+    startTime: 34 // Sin intro de diálogo, directo a la voz y ritmo envolvente
   }
 ];
 
