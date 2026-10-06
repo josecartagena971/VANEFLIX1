@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, SkipBack, X, Volume2, VolumeX, Maximize, Music, Heart } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, X, Volume2, VolumeX, Maximize, Music, Heart, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { movieScenes } from '../data/movieTimeline';
 import { musicPlaylist } from '../data/content';
 import { soundEffects } from '../utils/audioEffects';
@@ -14,6 +14,13 @@ export default function CinematicMovie({ onClose }) {
   const [sceneFlash, setSceneFlash] = useState(false);
   const [videoElapsed, setVideoElapsed] = useState(0);
   const [isTrimMode, setIsTrimMode] = useState(true);
+
+  // Modo Ventanita Flotante (Mini-Player / Picture-in-Picture)
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const touchStartYRef = useRef(0);
+  const touchStartXRef = useRef(0);
+  const isDraggingRef = useRef(false);
 
   // Música de fondo continua con Crossfade suave (sin cambios bruscos)
   const [activeSlot, setActiveSlot] = useState('A');
@@ -33,6 +40,40 @@ export default function CinematicMovie({ onClose }) {
 
   const currentScene = movieScenes[currentSceneIdx] || movieScenes[0];
   const isVideo = currentScene.type === 'video';
+
+  // Gesto táctil de deslizar hacia abajo en móvil para minimizar
+  const handleTouchStart = (e) => {
+    if (isMinimized) return;
+    touchStartYRef.current = e.touches[0].clientY;
+    touchStartXRef.current = e.touches[0].clientX;
+    isDraggingRef.current = true;
+  };
+
+  const handleTouchMove = (e) => {
+    if (isMinimized || !isDraggingRef.current) return;
+    const currentY = e.touches[0].clientY;
+    const currentX = e.touches[0].clientX;
+    const deltaY = currentY - touchStartYRef.current;
+    const deltaX = currentX - touchStartXRef.current;
+
+    // Solo si el deslizamiento es dominantemente vertical hacia abajo
+    if (deltaY > 10 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
+      setDragOffsetY(Math.min(180, deltaY * 0.7));
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (isMinimized || !isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const endY = e.changedTouches[0].clientY;
+    const deltaY = endY - touchStartYRef.current;
+
+    if (deltaY > 65) {
+      soundEffects.playPop();
+      setIsMinimized(true);
+    }
+    setDragOffsetY(0);
+  };
 
   const triggerMusicToast = (song) => {
     setSongToast(song);
@@ -312,19 +353,71 @@ export default function CinematicMovie({ onClose }) {
   return (
     <div
       ref={containerRef}
-      className="cinematic-movie-overlay"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: '#000000',
-        zIndex: 500,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden'
+      className={`cinematic-movie-overlay ${isMinimized ? 'mini-player-container mini-player-responsive' : ''}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={() => {
+        if (isMinimized) {
+          soundEffects.playPop();
+          setIsMinimized(false);
+        }
       }}
+      style={
+        isMinimized
+          ? {
+              position: 'fixed',
+              bottom: '24px',
+              right: '20px',
+              width: 'clamp(240px, 36vw, 340px)',
+              height: 'clamp(145px, 22vw, 205px)',
+              backgroundColor: '#0a0a0f',
+              borderRadius: '16px',
+              zIndex: 9999,
+              overflow: 'hidden',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              animation: 'slideUpMini 0.35s ease'
+            }
+          : {
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: '#000000',
+              zIndex: 500,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+              transform: dragOffsetY > 0 ? `translateY(${dragOffsetY}px) scale(${1 - dragOffsetY * 0.0015})` : 'none',
+              opacity: dragOffsetY > 0 ? 1 - dragOffsetY * 0.0025 : 1,
+              transition: isDraggingRef.current ? 'none' : 'transform 0.25s ease, opacity 0.25s ease'
+            }
+      }
     >
+      {/* Pill indicador superior para arrastrar/minimizar en móvil */}
+      {!isMinimized && (
+        <div
+          className="mini-drag-pill"
+          style={{
+            position: 'absolute',
+            top: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 70
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            soundEffects.playPop();
+            setIsMinimized(true);
+          }}
+          title="Desliza o toca aquí para minimizar a ventanita flotante"
+        />
+      )}
+
       {/* DESTELLO DE LUZ ENTRE CAMBIO DE FOTOS / ESCENAS */}
       {sceneFlash && <div className="scene-flash-overlay" />}
 
@@ -379,18 +472,41 @@ export default function CinematicMovie({ onClose }) {
           key={currentScene.id}
           style={{
             textAlign: 'center',
-            padding: '2rem',
+            padding: isMinimized ? '0.5rem' : '2rem',
             animation: 'fadeIn 0.8s ease',
-            maxWidth: '850px'
+            maxWidth: isMinimized ? '100%' : '850px'
           }}
         >
-          <div style={{ color: '#E50914', fontSize: '1.2rem', fontWeight: 900, letterSpacing: '4px', textTransform: 'uppercase', marginBottom: '1.2rem' }}>
+          <div style={{
+            color: '#E50914',
+            fontSize: isMinimized ? '0.65rem' : '1.2rem',
+            fontWeight: 900,
+            letterSpacing: isMinimized ? '1px' : '4px',
+            textTransform: 'uppercase',
+            marginBottom: isMinimized ? '0.2rem' : '1.2rem'
+          }}>
             {currentScene.title}
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3.6rem', fontWeight: 900, color: '#ffffff', lineHeight: 1.15, marginBottom: '1.2rem' }}>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: isMinimized ? '1.05rem' : '3.6rem',
+            fontWeight: 900,
+            color: '#ffffff',
+            lineHeight: 1.15,
+            marginBottom: isMinimized ? '0.2rem' : '1.2rem'
+          }}>
             {currentScene.subtitle}
           </h1>
-          <p style={{ fontFamily: 'var(--font-romantic)', fontSize: '1.6rem', color: '#fda4af', fontStyle: 'italic' }}>
+          <p style={{
+            fontFamily: 'var(--font-romantic)',
+            fontSize: isMinimized ? '0.8rem' : '1.6rem',
+            color: '#fda4af',
+            fontStyle: 'italic',
+            display: isMinimized ? '-webkit-box' : 'block',
+            WebkitLineClamp: isMinimized ? 2 : 'unset',
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
+          }}>
             "{currentScene.caption}"
           </p>
         </div>
@@ -421,12 +537,14 @@ export default function CinematicMovie({ onClose }) {
             {currentScene.effect === 'heart-vignette' && <div className="heart-vignette-overlay" />}
           </div>
 
-          {/* Frase / Subtítulo */}
-          <div className="movie-caption-container">
-            <p className="movie-caption-bubble">
-              {currentScene.caption}
-            </p>
-          </div>
+          {/* Frase / Subtítulo (solo en pantalla completa) */}
+          {!isMinimized && (
+            <div className="movie-caption-container">
+              <p className="movie-caption-bubble">
+                {currentScene.caption}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -452,7 +570,7 @@ export default function CinematicMovie({ onClose }) {
             style={{
               width: '100%',
               height: '100%',
-              objectFit: 'contain'
+              objectFit: isMinimized ? 'cover' : 'contain'
             }}
             onTimeUpdate={handleVideoTimeUpdate}
             onEnded={handleVideoEnded}
@@ -461,213 +579,391 @@ export default function CinematicMovie({ onClose }) {
             }}
           />
 
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '80px',
-              left: '5%',
-              right: '5%',
-              textAlign: 'center',
-              zIndex: 10,
-              pointerEvents: 'none'
-            }}
-          >
-            <p
+          {!isMinimized && (
+            <div
               style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '1.25rem',
-                color: '#ffffff',
-                fontWeight: 600,
-                background: 'rgba(0, 0, 0, 0.65)',
-                display: 'inline-block',
-                padding: '6px 20px',
-                borderRadius: '25px',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.12)'
+                position: 'absolute',
+                bottom: '80px',
+                left: '5%',
+                right: '5%',
+                textAlign: 'center',
+                zIndex: 10,
+                pointerEvents: 'none'
               }}
             >
-              {currentScene.caption}
-            </p>
-          </div>
+              <p
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.25rem',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  background: 'rgba(0, 0, 0, 0.65)',
+                  display: 'inline-block',
+                  padding: '6px 20px',
+                  borderRadius: '25px',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)'
+                }}
+              >
+                {currentScene.caption}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
 
-      {/* BARRA SUPERIOR */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          padding: '20px 32px',
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          zIndex: 50,
-          opacity: showControls ? 1 : 0,
-          transition: 'opacity 0.3s ease'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ color: '#E50914', fontWeight: 900, fontFamily: 'var(--font-cinema)', fontSize: '1.6rem', letterSpacing: '1px' }}>
-            VANEFLIX
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.4)' }}>|</span>
-          <span style={{ color: '#ffffff', fontWeight: 700, fontSize: '1rem' }}>
-            Nuestra Historia de Amor (Película Completa)
-          </span>
-        </div>
-
-        {/* Indicador de Canción actual */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={handleNextMusic}
-            style={{
+      {/* OVERLAY EXCLUSIVO DEL MINI-PLAYER FLOTANTE */}
+      {isMinimized && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 40%, rgba(0,0,0,0.88) 100%)',
+            zIndex: 60,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '8px 10px',
+            pointerEvents: 'auto'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: '#ff2e63',
+              background: 'rgba(0,0,0,0.65)',
+              padding: '2px 8px',
+              borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              background: 'rgba(255, 46, 99, 0.25)',
-              border: '1px solid rgba(255, 46, 99, 0.5)',
-              padding: '6px 14px',
-              borderRadius: '20px',
-              color: '#fda4af',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-            title="Cambiar de canción con transición suave (crossfade)"
-          >
-            <Music size={14} />
-            <span>{currentMusicSong.title} • {currentMusicSong.artist} • Siguiente ⏭</span>
-          </button>
+              gap: '4px'
+            }}>
+              🎬 En curso
+            </span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  soundEffects.playPop();
+                  setIsMinimized(false);
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                title="Agrandar a pantalla completa"
+              >
+                <Maximize2 size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                title="Cerrar película"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
 
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              color: '#fff',
-              borderRadius: '50%',
-              width: '40px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.2s ease'
-            }}
-            title="Salir de la película"
-          >
-            <X size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* CONTROLES INFERIORES */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '24px 36px',
-          background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, transparent 100%)',
-          zIndex: 50,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          opacity: showControls ? 1 : 0,
-          transition: 'opacity 0.3s ease'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
-            style={{
-              flex: 1,
-              height: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '2px',
-              overflow: 'hidden'
-            }}
-          >
-            <div
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsPlaying(!isPlaying);
+              }}
               style={{
+                background: 'rgba(229, 9, 20, 0.95)',
+                color: '#fff',
+                borderRadius: '50%',
+                width: '38px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
+                cursor: 'pointer'
+              }}
+              title={isPlaying ? "Pausar" : "Reanudar"}
+            >
+              {isPlaying ? <Pause size={17} fill="#fff" /> : <Play size={17} fill="#fff" style={{ marginLeft: '2px' }} />}
+            </button>
+          </div>
+
+          <div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '0.68rem',
+              color: '#fff',
+              fontWeight: 600,
+              marginBottom: '4px',
+              textShadow: '0 1px 3px #000'
+            }}>
+              <span style={{ maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentScene.title || 'Película Completa'}
+              </span>
+              <span style={{ color: '#fda4af' }}>Toca para agrandar ⤢</span>
+            </div>
+            <div style={{ height: '3px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{
                 width: isVideo
                   ? `${isTrimMode ? Math.min(100, (videoElapsed / (currentScene.maxDuration || 7)) * 100) : (videoRef.current?.duration ? (videoRef.current.currentTime / videoRef.current.duration) * 100 : 0)}%`
                   : `${sceneProgress}%`,
                 height: '100%',
-                backgroundColor: '#E50914',
-                transition: 'width 0.1s linear'
-              }}
-            />
+                background: '#E50914'
+              }} />
+            </div>
           </div>
-          <span style={{ color: '#a3a3a3', fontSize: '0.8rem', minWidth: '85px', textAlign: 'right' }}>
-            Escena {currentSceneIdx + 1} de {movieScenes.length}
-          </span>
         </div>
+      )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button
-              onClick={prevScene}
-              disabled={currentSceneIdx === 0}
-              style={{ color: currentSceneIdx === 0 ? '#555' : '#fff', padding: '6px' }}
-              title="Escena anterior"
-            >
-              <SkipBack size={22} />
-            </button>
-
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              style={{
-                background: '#ffffff',
-                color: '#000000',
-                borderRadius: '50%',
-                width: '42px',
-                height: '42px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              title={isPlaying ? "Pausar" : "Reanudar"}
-            >
-              {isPlaying ? <Pause size={20} fill="#000" /> : <Play size={20} fill="#000" style={{ marginLeft: '2px' }} />}
-            </button>
-
-            <button
-              onClick={nextScene}
-              disabled={currentSceneIdx === movieScenes.length - 1}
-              style={{ color: currentSceneIdx === movieScenes.length - 1 ? '#555' : '#fff', padding: '6px' }}
-              title="Siguiente escena"
-            >
-              <SkipForward size={22} />
-            </button>
-
-            <span style={{ color: '#fda4af', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Heart size={14} fill="#fda4af" />
-              {isVideo ? 'Momento Especial' : 'Nuestra Historia'}
+      {/* BARRA SUPERIOR (PANTALLA COMPLETA) */}
+      {!isMinimized && (
+        <div
+          className="movie-topbar-responsive"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            padding: '20px 32px',
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            zIndex: 50,
+            opacity: showControls ? 1 : 0,
+            transition: 'opacity 0.3s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ color: '#E50914', fontWeight: 900, fontFamily: 'var(--font-cinema)', fontSize: '1.6rem', letterSpacing: '1px' }}>
+              VANEFLIX
+            </span>
+            <span className="movie-topbar-title" style={{ color: 'rgba(255,255,255,0.4)' }}>|</span>
+            <span className="movie-topbar-title" style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.95rem' }}>
+              Nuestra Historia de Amor (Película)
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Indicador de Canción actual y Acciones */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
-              onClick={() => setIsMuted(!isMuted)}
-              style={{ color: '#fff', padding: '6px' }}
-              title={isMuted ? "Activar música" : "Silenciar"}
+              onClick={handleNextMusic}
+              className="movie-topbar-song-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(255, 46, 99, 0.25)',
+                border: '1px solid rgba(255, 46, 99, 0.5)',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                color: '#fda4af',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="Cambiar de canción con transición suave (crossfade)"
             >
-              {isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
+              <Music size={13} />
+              <span>{currentMusicSong.title} • {currentMusicSong.artist}</span>
+            </button>
+
+            {/* Botón Minimizar a Ventanita Flotante */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                soundEffects.playPop();
+                setIsMinimized(true);
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s ease',
+                cursor: 'pointer',
+                border: 'none'
+              }}
+              title="Minimizar a ventanita flotante (también puedes deslizar hacia abajo)"
+            >
+              <ChevronDown size={22} />
             </button>
 
             <button
-              onClick={toggleFullscreen}
-              style={{ color: '#fff', padding: '6px' }}
-              title="Pantalla completa"
+              onClick={onClose}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s ease',
+                cursor: 'pointer',
+                border: 'none'
+              }}
+              title="Salir de la película"
             >
-              <Maximize size={22} />
+              <X size={20} />
             </button>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* CONTROLES INFERIORES (PANTALLA COMPLETA) */}
+      {!isMinimized && (
+        <div
+          className="movie-bottom-controls-responsive"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '24px 36px',
+            background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, transparent 100%)',
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            opacity: showControls ? 1 : 0,
+            transition: 'opacity 0.3s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                flex: 1,
+                height: '4px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '2px',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  width: isVideo
+                    ? `${isTrimMode ? Math.min(100, (videoElapsed / (currentScene.maxDuration || 7)) * 100) : (videoRef.current?.duration ? (videoRef.current.currentTime / videoRef.current.duration) * 100 : 0)}%`
+                    : `${sceneProgress}%`,
+                  height: '100%',
+                  backgroundColor: '#E50914',
+                  transition: 'width 0.1s linear'
+                }}
+              />
+            </div>
+            <span style={{ color: '#a3a3a3', fontSize: '0.8rem', minWidth: '85px', textAlign: 'right' }}>
+              Escena {currentSceneIdx + 1} de {movieScenes.length}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button
+                onClick={prevScene}
+                disabled={currentSceneIdx === 0}
+                style={{ color: currentSceneIdx === 0 ? '#555' : '#fff', padding: '6px' }}
+                title="Escena anterior"
+              >
+                <SkipBack size={22} />
+              </button>
+
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                style={{
+                  background: '#ffffff',
+                  color: '#000000',
+                  borderRadius: '50%',
+                  width: '42px',
+                  height: '42px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title={isPlaying ? "Pausar" : "Reanudar"}
+              >
+                {isPlaying ? <Pause size={20} fill="#000" /> : <Play size={20} fill="#000" style={{ marginLeft: '2px' }} />}
+              </button>
+
+              <button
+                onClick={nextScene}
+                disabled={currentSceneIdx === movieScenes.length - 1}
+                style={{ color: currentSceneIdx === movieScenes.length - 1 ? '#555' : '#fff', padding: '6px' }}
+                title="Siguiente escena"
+              >
+                <SkipForward size={22} />
+              </button>
+
+              <span style={{ color: '#fda4af', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Heart size={14} fill="#fda4af" />
+                {isVideo ? 'Momento Especial' : 'Nuestra Historia'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                style={{ color: '#fff', padding: '6px' }}
+                title={isMuted ? "Activar música" : "Silenciar"}
+              >
+                {isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
+              </button>
+
+              {/* Botón Minimizar */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  soundEffects.playPop();
+                  setIsMinimized(true);
+                }}
+                style={{ color: '#fff', padding: '6px', cursor: 'pointer', background: 'none', border: 'none' }}
+                title="Minimizar a ventanita flotante"
+              >
+                <Minimize2 size={22} />
+              </button>
+
+              <button
+                onClick={toggleFullscreen}
+                style={{ color: '#fff', padding: '6px' }}
+                title="Pantalla completa"
+              >
+                <Maximize size={22} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

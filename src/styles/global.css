@@ -2467,5 +2467,666 @@ img, video {
   }
 }
 
+/* ==============================================================================
+   VENTANITA FLOTANTE (MINI-PLAYER / PICTURE-IN-PICTURE)
+   ============================================================================== */
+@keyframes slideUpMini {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
+.mini-player-container {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.9), 0 0 25px rgba(255, 46, 99, 0.5);
+  border: 2px solid rgba(255, 46, 99, 0.75);
+}
+
+.mini-player-container:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 46, 99, 0.7);
+  border-color: #ff2e63;
+}
+
+.mini-drag-pill {
+  width: 46px;
+  height: 5px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.mini-drag-pill:hover {
+  background-color: rgba(255, 255, 255, 0.85);
+  transform: scaleY(1.3);
+}
+
+@media (max-width: 768px) {
+  .mini-player-responsive {
+    bottom: 20px !important;
+    right: 12px !important;
+    left: auto !important;
+    width: clamp(230px, 68vw, 320px) !important;
+    height: clamp(140px, 42vw, 195px) !important;
+  }
+
+  /* 1. NAVBAR & CABECERA MÓVIL */
+  .navbar-fixed {
+    height: 60px;
+    padding: 0 14px;
+    background: rgba(15, 15, 18, 0.96) !important;
+    backdrop-filter: blur(15px);
+  }
+
+  .vaneflix-logo {
+    font-size: 1.55rem;
+    letter-spacing: 1px;
+  }
+
+  .vaneflix-logo span.heart-badge {
+    font-size: 1.1rem;
+  }
+
+  /* Ocultar menú horizontal tradicional en móvil y mostrar botón hamburguesa */
+  .navbar-menu {
+    display: none !important;
+  }
+
+  .navbar-mobile-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+  }
+
+  .navbar-right {
+    gap: 0.45rem;
+  }
+
+  .nav-action-btn {
+    padding: 6px;
+  }
+
+  .nav-surprise-btn {
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    border-radius: 16px;
+    gap: 4px;
+  }
+
+  .nav-avatar-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+  }
+
+  /* Menú lateral desplegable móvil */
+  .mobile-menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 12, 0.98);
+    backdrop-filter: blur(25px);
+    z-index: 9999;
+    padding: 1.5rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    animation: fadeIn 0.25s ease;
+  }
+
+  .mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .mobile-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    list-style: none;
+  }
+
+  .mobile-menu-link {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .mobile-menu-link.active {
+    color: #fff;
+    font-weight: 800;
+    background: rgba(229, 9, 20, 0.15);
+  }
+
+  /* 2. HERO BANNER */
+  .hero-wrapper {
+    min-height: 70vh;
+    padding: 0 14px;
+    margin-bottom: 1.2rem;
+  }
+
+  .hero-content {
+    padding-top: 4.8rem;
+    max-width: 100%;
+  }
+
+  .hero-badge-tag {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    letter-spacing: 1px;
+    margin-bottom: 0.7rem;
+  }
+
+  .hero-title {
+    font-size: clamp(1.85rem, 8vw, 2.5rem);
+    line-height: 1.12;
+    margin-bottom: 0.7rem;
+    letter-spacing: -0.5px;
+  }
+
+  .hero-meta-row {
+    font-size: 0.82rem;
+    gap: 8px;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-description {
+    font-size: 0.92rem;
+    line-height: 1.48;
+    margin-bottom: 1.4rem;
+  }
+
+  .hero-actions-group {
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-play-hero {
+    font-size: 0.9rem;
+    padding: 10px 18px;
+    border-radius: 6px;
+  }
+
+  .btn-mylist-hero, .btn-info-hero {
+    font-size: 0.86rem;
+    padding: 10px 16px;
+    border-radius: 6px;
+  }
+
+  /* 3. CONTADOR DE CUMPLEAÑOS */
+  .countdown-banner {
+    margin: 0 12px 1.8rem 12px;
+    padding: 1.2rem 1rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .countdown-info h3 {
+    font-size: 1.25rem;
+    justify-content: center;
+  }
+
+  .countdown-info p {
+    font-size: 0.84rem;
+  }
+
+  .countdown-timer-grid {
+    gap: 0.45rem;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .countdown-tile {
+    padding: 8px 10px;
+    min-width: 58px;
+    flex: 1;
+    max-width: 75px;
+  }
+
+  .countdown-number {
+    font-size: 1.35rem;
+  }
+
+  .countdown-label {
+    font-size: 0.65rem;
+  }
+
+  .countdown-celebration-headline {
+    font-size: 1.35rem;
+  }
+
+  .countdown-actions-btns {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-celebrate-confetti, .btn-celebrate-surprise {
+    font-size: 0.84rem;
+    padding: 9px 14px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* 4. FILAS DE CONTENIDO Y TARJETAS */
+  .content-row-container {
+    padding: 0 14px;
+    margin-bottom: 2rem;
+  }
+
+  .content-row-title {
+    font-size: 1.2rem;
+  }
+
+  .content-row-desc {
+    font-size: 0.78rem;
+  }
+
+  .row-slider-wrapper {
+    overflow: visible;
+  }
+
+  .row-scroll-track {
+    gap: 12px;
+    padding: 10px 2px 14px 2px;
+    margin: -10px -2px -14px -2px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .movie-card {
+    flex: 0 0 175px;
+    scroll-snap-align: start;
+    border-radius: 8px;
+  }
+
+  .movie-card:hover {
+    transform: none; /* Evita zooms bruscos que se cortan en pantallas táctiles */
+  }
+
+  .slider-arrow-btn {
+    display: none !important; /* Deslizar con el dedo es 100% nativo */
+  }
+
+  .movie-card-hover-panel {
+    padding: 8px 10px 10px 10px;
+    gap: 4px;
+  }
+
+  .card-title-hover {
+    font-size: 0.85rem;
+  }
+
+  .card-circle-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .card-meta-line {
+    font-size: 0.72rem;
+  }
+
+  /* 5. MODAL DETALLES / FICHA DE INFORMACIÓN */
+  .modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content-card {
+    border-radius: 18px 18px 0 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: 100%;
+  }
+
+  .modal-hero-cover {
+    height: 210px;
+  }
+
+  .modal-hero-title {
+    font-size: 1.45rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .modal-hero-overlay-info {
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+  }
+
+  .modal-body-layout {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+    padding: 16px 16px 28px 16px;
+  }
+
+  .modal-synopsis-text {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+
+  .modal-full-text-box {
+    font-size: 0.88rem;
+    padding: 10px 14px;
+    margin-bottom: 1rem;
+  }
+
+  .modal-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+  }
+
+  /* 6. GALERÍA DE FOTOS Y LIGHTBOX */
+  .photos-page-container {
+    padding: calc(var(--navbar-height) + 0.8rem) 12px 3rem 12px;
+  }
+
+  .page-header-title {
+    font-size: 1.9rem;
+  }
+
+  .page-header-banner p {
+    font-size: 0.9rem !important;
+  }
+
+  .category-filter-bar {
+    gap: 6px;
+    margin-bottom: 1.5rem;
+  }
+
+  .filter-pill-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .photo-grid-layout {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .photo-card-info {
+    padding: 8px 10px;
+  }
+
+  .photo-card-title {
+    font-size: 0.88rem;
+  }
+
+  .lightbox-modal {
+    padding: 10px;
+  }
+
+  .lightbox-content-box {
+    max-height: 94vh;
+  }
+
+  .lightbox-img-view {
+    max-height: 52vh;
+    border-radius: 6px;
+  }
+
+  .lightbox-caption h2 {
+    font-size: 1.2rem !important;
+  }
+
+  .lightbox-caption p {
+    font-size: 0.85rem !important;
+  }
+
+  .lightbox-prev {
+    left: 4px !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .lightbox-next {
+    right: 4px !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* 7. CARTAS DE AMOR */
+  .letters-page-container {
+    padding: calc(var(--navbar-height) + 0.8rem) 12px 3rem 12px;
+  }
+
+  .letters-grid {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+
+  .letter-card-envelope {
+    padding: 18px;
+    min-height: 190px;
+  }
+
+  .letter-card-title {
+    font-size: 1.2rem;
+  }
+
+  .letter-reader-modal {
+    padding: 10px;
+  }
+
+  .letter-stationery-sheet {
+    padding: 1.8rem 1.2rem;
+    max-height: 88vh;
+  }
+
+  .letter-main-text {
+    font-size: 1.02rem;
+    line-height: 1.65;
+  }
+
+  /* 8. 10 RAZONES */
+  .reasons-section {
+    margin: 1.5rem 8px;
+    padding: 1.8rem 12px;
+    border-radius: 14px;
+  }
+
+  .reasons-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .reason-card-interactive {
+    padding: 16px;
+  }
+
+  .reason-card-number {
+    font-size: 1.7rem;
+  }
+
+  .reason-card-title {
+    font-size: 1.05rem;
+  }
+
+  /* 9. MODO SORPRESA */
+  .surprise-full-overlay {
+    padding: 10px;
+  }
+
+  .surprise-card-box {
+    padding: 2rem 1.2rem;
+    border-radius: 16px;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  .surprise-heart-icon {
+    font-size: 2.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .surprise-headline {
+    font-size: 1.7rem;
+  }
+
+  .surprise-subtitle {
+    font-size: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .surprise-paragraphs-wrap {
+    font-size: 0.9rem;
+    line-height: 1.55;
+    gap: 0.8rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .surprise-final-quote {
+    font-size: 1.15rem;
+    padding: 12px 6px;
+  }
+
+  /* 10. REPRODUCTORES DE VIDEO Y PELÍCULA */
+  .movie-topbar-responsive {
+    padding: 10px 12px !important;
+  }
+
+  .movie-topbar-title {
+    display: none !important; /* Oculta texto largo para no desbordar en móvil */
+  }
+
+  .movie-topbar-song-btn {
+    padding: 4px 8px !important;
+    font-size: 0.72rem !important;
+    max-width: 135px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .movie-bottom-controls-responsive {
+    padding: 10px 12px 18px 12px !important;
+  }
+
+  .video-player-topbar {
+    padding: 10px 12px;
+  }
+
+  .video-back-btn span {
+    display: none;
+  }
+
+  .video-player-controls {
+    padding: 10px 12px;
+  }
+
+  .video-controls-bottom-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .video-ctrl-group input[type="range"] {
+    display: none; /* Los celulares usan botones físicos de volumen */
+  }
+
+  .video-time-display {
+    font-size: 0.75rem;
+    min-width: 70px;
+  }
+
+  /* 11. REPRODUCTOR DE MÚSICA FLOTANTE */
+  .floating-music-widget {
+    bottom: 14px;
+    right: 10px;
+    left: auto;
+    padding: 6px 10px;
+    gap: 8px;
+    max-width: calc(100vw - 20px);
+    border-radius: 30px;
+  }
+
+  .floating-music-widget input[type="range"] {
+    display: none;
+  }
+
+  .music-title-wrap {
+    max-width: 130px;
+  }
+
+  .music-track-name {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .music-artist-name {
+    font-size: 0.62rem;
+  }
+
+  /* 12. NOTIFICACIONES & BUSCADOR */
+  .notifications-dropdown {
+    width: calc(100vw - 24px);
+    right: -10px;
+    max-width: 350px;
+  }
+
+  .search-view-container {
+    padding: calc(var(--navbar-height) + 0.8rem) 12px 3rem 12px;
+  }
+
+  /* 13. SELECTOR DE PERFILES */
+  .profile-screen-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .profile-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.8rem;
+  }
+
+  .profile-grid {
+    gap: 1.2rem;
+  }
+
+  .profile-avatar-wrapper {
+    width: 105px;
+    height: 105px;
+  }
+
+  .profile-name {
+    font-size: 0.95rem;
+  }
+
+  .profile-subtitle {
+    font-size: 0.72rem;
+  }
+
+  .profile-enter-btn {
+    padding: 10px 22px;
+    font-size: 0.92rem;
+  }
+}
 

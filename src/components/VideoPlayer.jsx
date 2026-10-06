@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, RotateCw, SkipForward, SkipBack, Music } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, RotateCw, SkipForward, SkipBack, Music, ChevronDown, Maximize2, Minimize2, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { musicPlaylist } from '../data/content';
 import { soundEffects } from '../utils/audioEffects';
@@ -42,6 +42,13 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
   // Estado del overlay de inicio dinámico
   const [showIntro, setShowIntro] = useState(true);
 
+  // Modo Ventanita Flotante (Mini-Player / Picture-in-Picture)
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const touchStartYRef = useRef(0);
+  const touchStartXRef = useRef(0);
+  const isDraggingRef = useRef(false);
+
   const videoRef = useRef(null);
   const musicAudioRef = useRef(null);
   const containerRef = useRef(null);
@@ -58,6 +65,40 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
   const hasNext = playlist.length > 0 && currentIdx < playlist.length - 1;
   const hasPrev = playlist.length > 0 && currentIdx > 0;
   const nextItem = hasNext ? playlist[currentIdx + 1] : null;
+
+  // Gesto táctil de deslizar hacia abajo en móvil para minimizar
+  const handleTouchStart = (e) => {
+    if (isMinimized) return;
+    touchStartYRef.current = e.touches[0].clientY;
+    touchStartXRef.current = e.touches[0].clientX;
+    isDraggingRef.current = true;
+  };
+
+  const handleTouchMove = (e) => {
+    if (isMinimized || !isDraggingRef.current) return;
+    const currentY = e.touches[0].clientY;
+    const currentX = e.touches[0].clientX;
+    const deltaY = currentY - touchStartYRef.current;
+    const deltaX = currentX - touchStartXRef.current;
+
+    // Solo si el deslizamiento es predominantemente hacia abajo
+    if (deltaY > 10 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
+      setDragOffsetY(Math.min(180, deltaY * 0.7));
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (isMinimized || !isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const endY = e.changedTouches[0].clientY;
+    const deltaY = endY - touchStartYRef.current;
+
+    if (deltaY > 65) {
+      soundEffects.playPop();
+      setIsMinimized(true);
+    }
+    setDragOffsetY(0);
+  };
 
   // Sincronizar música de la carpeta iniciando directo en el coro / mejor parte
   useEffect(() => {
@@ -251,7 +292,73 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
   };
 
   return (
-    <div className="video-player-modal" ref={containerRef}>
+    <div
+      ref={containerRef}
+      className={`video-player-modal ${isMinimized ? 'mini-player-container mini-player-responsive' : ''}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={() => {
+        if (isMinimized) {
+          soundEffects.playPop();
+          setIsMinimized(false);
+        }
+      }}
+      style={
+        isMinimized
+          ? {
+              position: 'fixed',
+              bottom: '24px',
+              right: '20px',
+              width: 'clamp(240px, 36vw, 340px)',
+              height: 'clamp(145px, 22vw, 205px)',
+              backgroundColor: '#0a0a0f',
+              borderRadius: '16px',
+              zIndex: 9999,
+              overflow: 'hidden',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              animation: 'slideUpMini 0.35s ease'
+            }
+          : {
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: '#000000',
+              zIndex: 500,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+              transform: dragOffsetY > 0 ? `translateY(${dragOffsetY}px) scale(${1 - dragOffsetY * 0.0015})` : 'none',
+              opacity: dragOffsetY > 0 ? 1 - dragOffsetY * 0.0025 : 1,
+              transition: isDraggingRef.current ? 'none' : 'transform 0.25s ease, opacity 0.25s ease'
+            }
+      }
+    >
+      {/* Pill indicador superior para arrastrar/minimizar en móvil */}
+      {!isMinimized && (
+        <div
+          className="mini-drag-pill"
+          style={{
+            position: 'absolute',
+            top: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 70
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            soundEffects.playPop();
+            setIsMinimized(true);
+          }}
+          title="Desliza o toca aquí para minimizar a ventanita flotante"
+        />
+      )}
+
       {/* Música romántica de la carpeta con inicio en el coro, sustituyendo el audio ruidoso del video */}
       <audio
         ref={musicAudioRef}
@@ -301,7 +408,7 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
         />
 
         {/* OVERLAY DE ENTRADA DINÁMICA (VARIADA SEGÚN LA TARJETA) */}
-        {showIntro && (
+        {!isMinimized && showIntro && (
           <div
             className={`player-dynamic-intro intro-${currentItem.introType || 'romantic'}`}
             onClick={(e) => {
@@ -340,8 +447,135 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
           </div>
         )}
 
+        {/* OVERLAY EXCLUSIVO DEL MINI-PLAYER FLOTANTE */}
+        {isMinimized && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 40%, rgba(0,0,0,0.88) 100%)',
+              zIndex: 60,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              padding: '8px 10px',
+              pointerEvents: 'auto'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: '#ff2e63',
+                background: 'rgba(0,0,0,0.65)',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                🎬 {currentItem?.title || 'Video'}
+              </span>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    soundEffects.playPop();
+                    setIsMinimized(false);
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  title="Agrandar a pantalla completa"
+                >
+                  <Maximize2 size={14} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  title="Cerrar video"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlay();
+                }}
+                style={{
+                  background: 'rgba(229, 9, 20, 0.95)',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: '38px',
+                  height: '38px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
+                  cursor: 'pointer'
+                }}
+                title={isPlaying ? "Pausar" : "Reanudar"}
+              >
+                {isPlaying ? <Pause size={17} fill="#fff" /> : <Play size={17} fill="#fff" style={{ marginLeft: '2px' }} />}
+              </button>
+            </div>
+
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.68rem',
+                color: '#fff',
+                fontWeight: 600,
+                marginBottom: '4px',
+                textShadow: '0 1px 3px #000'
+              }}>
+                <span style={{ maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+                <span style={{ color: '#fda4af' }}>Toca para agrandar ⤢</span>
+              </div>
+              <div style={{ height: '3px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${duration ? (currentTime / duration) * 100 : 0}%`,
+                  height: '100%',
+                  background: '#E50914'
+                }} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* OVERLAY NETFLIX: SIGUIENTE RECUERDO AUTOMÁTICO */}
-        {nextCountdown !== null && nextItem && (
+        {!isMinimized && nextCountdown !== null && nextItem && (
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -390,156 +624,198 @@ export default function VideoPlayer({ item, playlist = [], onClose }) {
           </div>
         )}
 
-        {/* Barra Superior con botón Atrás y Canción actual */}
-        <div
-          className="video-player-topbar"
-          style={{ opacity: showControls ? 1 : 0 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button className="video-back-btn" onClick={onClose}>
-            <ArrowLeft size={20} />
-            <span>Volver a VANEFLIX</span>
-          </button>
-
-          <div style={{ marginLeft: '1rem', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{currentItem?.title}</span>
-            {playlist.length > 1 && (
-              <span style={{ color: '#fda4af', fontSize: '0.85rem' }}>
-                ({currentIdx + 1} de {playlist.length})
-              </span>
-            )}
-            {currentItem?.categoryBadge && (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(255,46,99,0.25)', border: '1px solid rgba(255,46,99,0.5)', padding: '2px 8px', borderRadius: '4px', color: '#ffd166', fontWeight: 700 }}>
-                {currentItem.categoryBadge}
-              </span>
-            )}
-          </div>
-
+        {/* Barra Superior con botón Atrás, Minimizar y Canción actual */}
+        {!isMinimized && (
           <div
-            style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255, 46, 99, 0.25)',
-              border: '1px solid rgba(255, 46, 99, 0.5)',
-              padding: '6px 14px',
-              borderRadius: '20px',
-              color: '#fda4af',
-              fontSize: '0.82rem',
-              fontWeight: 600
-            }}
+            className="video-player-topbar"
+            style={{ opacity: showControls ? 1 : 0 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <Music size={14} />
-            <span>Música: <strong>{currentMusic.title}</strong> — {currentMusic.artist}</span>
+            <button className="video-back-btn" onClick={onClose}>
+              <ArrowLeft size={20} />
+              <span>Volver</span>
+            </button>
+
+            {/* Botón Minimizar a Ventanita Flotante */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                soundEffects.playPop();
+                setIsMinimized(true);
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                borderRadius: '50%',
+                width: '38px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                border: 'none',
+                marginLeft: '10px'
+              }}
+              title="Minimizar a ventanita flotante (también puedes deslizar hacia abajo)"
+            >
+              <ChevronDown size={22} />
+            </button>
+
+            <div style={{ marginLeft: '1rem', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>{currentItem?.title}</span>
+              {playlist.length > 1 && (
+                <span style={{ color: '#fda4af', fontSize: '0.85rem' }}>
+                  ({currentIdx + 1} de {playlist.length})
+                </span>
+              )}
+              {currentItem?.categoryBadge && (
+                <span style={{ fontSize: '0.75rem', background: 'rgba(255,46,99,0.25)', border: '1px solid rgba(255,46,99,0.5)', padding: '2px 8px', borderRadius: '4px', color: '#ffd166', fontWeight: 700 }}>
+                  {currentItem.categoryBadge}
+                </span>
+              )}
+            </div>
+
+            <div
+              style={{
+                marginLeft: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(255, 46, 99, 0.25)',
+                border: '1px solid rgba(255, 46, 99, 0.5)',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                color: '#fda4af',
+                fontSize: '0.82rem',
+                fontWeight: 600
+              }}
+            >
+              <Music size={14} />
+              <span>Música: <strong>{currentMusic.title}</strong> — {currentMusic.artist}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Controles de reproducción inferiores */}
-        <div
-          className="video-player-controls"
-          style={{ opacity: showControls ? 1 : 0 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            className="video-scrub-bar"
-          />
+        {!isMinimized && (
+          <div
+            className="video-player-controls"
+            style={{ opacity: showControls ? 1 : 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              className="video-scrub-bar"
+            />
 
-          <div className="video-controls-bottom-row">
-            <div className="video-ctrl-group">
-              {hasPrev && (
-                <button className="video-icon-btn" onClick={playPrev} title="Recuerdo anterior">
-                  <SkipBack size={20} />
+            <div className="video-controls-bottom-row">
+              <div className="video-ctrl-group">
+                {hasPrev && (
+                  <button className="video-icon-btn" onClick={playPrev} title="Recuerdo anterior">
+                    <SkipBack size={20} />
+                  </button>
+                )}
+
+                <button className="video-icon-btn" onClick={togglePlay}>
+                  {isPlaying ? <Pause size={24} /> : <Play size={24} fill="currentColor" />}
                 </button>
-              )}
 
-              <button className="video-icon-btn" onClick={togglePlay}>
-                {isPlaying ? <Pause size={24} /> : <Play size={24} fill="currentColor" />}
-              </button>
+                {hasNext && (
+                  <button className="video-icon-btn" onClick={playNext} title="Siguiente recuerdo">
+                    <SkipForward size={20} />
+                  </button>
+                )}
 
-              {hasNext && (
-                <button className="video-icon-btn" onClick={playNext} title="Siguiente recuerdo">
-                  <SkipForward size={20} />
+                <button
+                  className="video-icon-btn"
+                  onClick={() => {
+                    const target = Math.max(0, currentTime - 10);
+                    setCurrentTime(target);
+                    if (videoRef.current) videoRef.current.currentTime = target;
+                  }}
+                  title="-10s"
+                >
+                  <RotateCcw size={18} />
                 </button>
-              )}
 
-              <button
-                className="video-icon-btn"
-                onClick={() => {
-                  const target = Math.max(0, currentTime - 10);
-                  setCurrentTime(target);
-                  if (videoRef.current) videoRef.current.currentTime = target;
-                }}
-                title="-10s"
-              >
-                <RotateCcw size={18} />
-              </button>
-
-              <button
-                className="video-icon-btn"
-                onClick={() => {
-                  const target = Math.min(duration, currentTime + 10);
-                  setCurrentTime(target);
-                  if (videoRef.current) videoRef.current.currentTime = target;
-                }}
-                title="+10s"
-              >
-                <RotateCw size={18} />
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button className="video-icon-btn" onClick={toggleMute}>
-                  {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                <button
+                  className="video-icon-btn"
+                  onClick={() => {
+                    const target = Math.min(duration, currentTime + 10);
+                    setCurrentTime(target);
+                    if (videoRef.current) videoRef.current.currentTime = target;
+                  }}
+                  title="+10s"
+                >
+                  <RotateCw size={18} />
                 </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  style={{ width: '65px', accentColor: '#E50914' }}
-                />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button className="video-icon-btn" onClick={toggleMute}>
+                    {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    style={{ width: '65px', accentColor: '#E50914' }}
+                  />
+                </div>
+
+                <div className="video-time-display">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
               </div>
 
-              <div className="video-time-display">
-                {formatTime(currentTime)} / {formatTime(duration)}
+              <div className="video-ctrl-group">
+                <select
+                  value={playbackSpeed}
+                  onChange={(e) => {
+                    const s = parseFloat(e.target.value);
+                    setPlaybackSpeed(s);
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.15)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value={0.75}>0.75x</option>
+                  <option value={1}>1.0x Normal</option>
+                  <option value={1.25}>1.25x</option>
+                  <option value={1.5}>1.5x</option>
+                </select>
+
+                {/* Botón Minimizar */}
+                <button
+                  className="video-icon-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    soundEffects.playPop();
+                    setIsMinimized(true);
+                  }}
+                  title="Minimizar a ventanita flotante"
+                >
+                  <Minimize2 size={20} />
+                </button>
+
+                <button className="video-icon-btn" onClick={toggleFullscreen} title="Pantalla completa">
+                  <Maximize size={22} />
+                </button>
               </div>
-            </div>
-
-            <div className="video-ctrl-group">
-              <select
-                value={playbackSpeed}
-                onChange={(e) => {
-                  const s = parseFloat(e.target.value);
-                  setPlaybackSpeed(s);
-                }}
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '4px 8px',
-                  fontSize: '0.85rem'
-                }}
-              >
-                <option value={0.75}>0.75x</option>
-                <option value={1}>1.0x Normal</option>
-                <option value={1.25}>1.25x</option>
-                <option value={1.5}>1.5x</option>
-              </select>
-
-              <button className="video-icon-btn" onClick={toggleFullscreen} title="Pantalla completa">
-                <Maximize size={22} />
-              </button>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

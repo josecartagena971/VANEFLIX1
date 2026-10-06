@@ -10,7 +10,8 @@ export default function PhotoGallery({ onPlayMovie, isPlayingMusic = true, onTog
   const [isSlideshow, setIsSlideshow] = useState(false);
 
   const slideCountRef = useRef(0);
-  const currentMusic = musicPlaylist[currentSongIndex] || musicPlaylist[0];
+  const touchStartXRef = useRef(0);
+  const currentMusic = musicPlaylist[0];
 
   const categories = ['Todos', 'Primeras Citas', 'Viajes', 'Risas', 'Especiales'];
 
@@ -42,6 +43,20 @@ export default function PhotoGallery({ onPlayMovie, isPlayingMusic = true, onTog
     soundEffects.playPop();
     setTransitionKey(prev => prev + 1);
     setActivePhotoIndex((prev) => (prev < filteredPhotos.length - 1 ? prev + 1 : 0));
+  };
+
+  // Soporte para gestos táctiles (swipe) en visor de fotos móvil
+  const handleLightboxTouchStart = (e) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleLightboxTouchEnd = (e) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    if (deltaX > 45) {
+      handlePrev();
+    } else if (deltaX < -45) {
+      handleNext();
+    }
   };
 
   // Modo presentación musical automática de fotos
@@ -78,7 +93,7 @@ export default function PhotoGallery({ onPlayMovie, isPlayingMusic = true, onTog
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activePhotoIndex, filteredPhotos.length, currentSongIndex]);
+  }, [activePhotoIndex, filteredPhotos.length]);
 
   const activePhoto = activePhotoIndex !== null ? filteredPhotos[activePhotoIndex] : null;
 
@@ -189,7 +204,12 @@ export default function PhotoGallery({ onPlayMovie, isPlayingMusic = true, onTog
 
       {/* Modal Lightbox de Vista Ampliada con Efectos de Transición */}
       {activePhoto && (
-        <div className="lightbox-modal" onClick={handleClose}>
+        <div
+          className="lightbox-modal"
+          onClick={handleClose}
+          onTouchStart={handleLightboxTouchStart}
+          onTouchEnd={handleLightboxTouchEnd}
+        >
           <div className="lightbox-content-box" onClick={(e) => e.stopPropagation()}>
             {/* Botón Cerrar, Contador y Control de Música */}
             <div style={{ position: 'absolute', top: '-52px', left: 0, right: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
