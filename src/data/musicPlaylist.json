@@ -1,0 +1,37 @@
+[
+  {
+    "id": "cancion_i_get_to_love_you",
+    "file": "cancion_i_get_to_love_you.mp3",
+    "title": "I Get To Love You (Nuestra Canción)",
+    "artist": "Ruelle",
+    "src": "/music/cancion_i_get_to_love_you.mp3"
+  },
+  {
+    "id": "cancion_photograph",
+    "file": "cancion_photograph.mp3",
+    "title": "Photograph",
+    "artist": "Ed Sheeran",
+    "src": "/music/cancion_photograph.mp3"
+  },
+  {
+    "id": "cancion_i_wanna_be_yours",
+    "file": "cancion_i_wanna_be_yours.mp3",
+    "title": "I Wanna Be Yours",
+    "artist": "Arctic Monkeys",
+    "src": "/music/cancion_i_wanna_be_yours.mp3"
+  },
+  {
+    "id": "cancion_just_the_way_you_are",
+    "file": "cancion_just_the_way_you_are.mp3",
+    "title": "Just The Way You Are",
+    "artist": "Bruno Mars",
+    "src": "/music/cancion_just_the_way_you_are.mp3"
+  },
+  {
+    "id": "cancion_happy_together",
+    "file": "cancion_happy_together.mp3",
+    "title": "Happy Together",
+    "artist": "The Turtles",
+    "src": "/music/cancion_happy_together.mp3"
+  }
+]
